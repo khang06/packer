@@ -48,7 +48,7 @@ def copy_dependencies(config, target_executable, target_folder, ld_type, agent_f
     if proc.wait() != 0:
         raise Exception(proc.stderr.read())
 
-    dependencies = proc.stdout.read().decode("utf-8").rstrip().split("\n")
+    dependencies = proc.stdout.read().decode("utf-8").rstrip().split("\n") + config.argument_values["deps"].split(" ")
 
     library_name = []
 
@@ -66,7 +66,7 @@ def copy_dependencies(config, target_executable, target_folder, ld_type, agent_f
         if libasan_name in d:
             asan_lib = os.path.basename(d)
             #is_asan_build = True
-        if ld_linux_name in d:
+        if ld_linux_name in d and not config.argument_values["ignore_ld"]:
             ld_linux = os.path.basename(d)
         download_script += "./hget %s%s %s%s\n"%(folder, os.path.basename(d), folder, os.path.basename(d))
         copyfile(d, "%s/%s"%(target_folder, os.path.basename(d)))
@@ -363,12 +363,13 @@ def compile(config):
 
     download_script += "LD_LIBRARY_PATH=/tmp/:$LD_LIBRARY_PATH "
 
-    if asan_lib:
-        download_script += "LD_BIND_NOW=1 LD_PRELOAD=/tmp/%s:ld_preload_fuzz.so "%(asan_lib)
-    else:
-        download_script += "LD_BIND_NOW=1 LD_PRELOAD=/tmp/ld_preload_fuzz.so "
+    if not config.argument_values["no_preload"]:
+        if asan_lib:
+            download_script += "LD_BIND_NOW=1 LD_PRELOAD=/tmp/%s:ld_preload_fuzz.so "%(asan_lib)
+        else:
+            download_script += "LD_BIND_NOW=1 LD_PRELOAD=/tmp/ld_preload_fuzz.so "
     download_script += "ASAN_OPTIONS=detect_leaks=0:allocator_may_return_null=1:log_path=/tmp/data.log:abort_on_error=true __AFL_DEFER_FORKSRV=1 "
-    download_script += "NYX_VM=1 "
+    download_script += "NYX_VM=1 %s "%(config.argument_values["env"])
 
     if DELAYED_INIT:
         download_script += "DELAYED_NYX_FUZZER_INIT=ON "
@@ -388,8 +389,8 @@ def compile(config):
         download_script += "NYX_PT_RANGE_AUTO_CONF_B=ON "
     if asan_lib or asan_executable:
         download_script += "NYX_ASAN_EXECUTABLE=TRUE "
-    else:
-        download_script += "MALLOC_CHECK_=2 " 
+    #else:
+        #download_script += "MALLOC_CHECK_=2 " 
 
     if ld_linux:
         download_script += "./%s ./target_executable %s"%(ld_linux, config.argument_values["args"]) # fixme
@@ -402,9 +403,12 @@ def compile(config):
         download_script += " "
 
     if STDOUT_STDERR_DEBUG:
+        '''
         download_script += " > stdout.txt 2> stderr.txt\n"
         download_script += "cat stdout.txt | ./hcat\n"
         download_script += "cat stderr.txt | ./hcat\n"
+        '''
+        download_script += "2>&1 | ./hcat\n"
     else:
         download_script += " > /dev/null 2> /dev/null\n"
 

@@ -289,11 +289,15 @@ class PackerConfiguration:
         parser.add_argument('-m', metavar='<memlimit>', help='set memory limit [MB] (default 50 MB).', default=50,
                             type=int)
         parser.add_argument('-spec', action=FullPath, type=parse_is_dir, help='path to the NYX spec folder.')
+        parser.add_argument('-env', help='additional environment variables', default='')
+        parser.add_argument('-deps', help='additional dependencies', default='')
 
         parser.add_argument('--delayed_init', help='delayed fuzzing entry point', action='store_true', default=False)
         parser.add_argument('--fast_reload_mode', help='fast reload acceleration (experimental)', action='store_true', default=False)
         parser.add_argument('--setup_folder', help='pack addional setup folder', default="", type=parse_is_setup_dir)
         parser.add_argument('--purge', help='delete output_dir', action='store_true', default=False)
+        parser.add_argument('--ignore_ld', help='forces the detected ld to be ignored (fixes .NET single file publish binaries)', action='store_true', default=False)
+        parser.add_argument('--no_preload', help='disable loading the harness via LD_PRELOAD', action='store_true', default=False)
 
         tracing = parser.add_argument_group("Intel-PT Option")
 

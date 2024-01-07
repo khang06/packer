@@ -111,9 +111,7 @@ size_t min_size_t(size_t a, size_t b){
 
 /* don't enable this option for super mario */
 /* TODO: make this option opt-in */
-#ifdef NET_FUZZ
-//#define EARLY_EXIT_NODES 35
-#endif
+#define EARLY_EXIT_NODES 25
 
 static void dump_payload(void* buffer, size_t len){
     static bool init = false;
@@ -569,6 +567,9 @@ void capabilites_configuration(bool timeout_detection, bool agent_tracing, bool 
             unsigned int map_size = __afl_final_loc == 0 ? 65536 : __afl_final_loc;
             hprintf("[capablities] overwriting bitmap_size: 0x%"PRIx64"\n", map_size);
             agent_config.coverage_bitmap_size = map_size;
+        } else {
+            hprintf("[capablities] using default bitmap_size\n");
+            agent_config.coverage_bitmap_size = 65536;
         }
 
         trace_buffer = mmap((void*)NULL, agent_config.coverage_bitmap_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
@@ -967,7 +968,8 @@ void nyx_init_start(void){
 
 /* fixme */
 #ifndef NET_FUZZ
-        pid = _fork();
+        // .NET really hates fork()
+        pid = /*_fork()*/ 0;
 #else
         pid = 0;
 #endif
@@ -1081,8 +1083,8 @@ char *getenv(const char *name){
 }
 
 void *shmat(int shmid, const void *shmaddr, int shmflg){
-    if(get_harness_state()->afl_mode && shmid == 5134680){
-        capabilites_configuration(false, true, false);
+    if(/*get_harness_state()->afl_mode &&*/ shmid == 5134680){
+        capabilites_configuration(false, get_harness_state()->afl_mode, !get_harness_state()->afl_mode);
         if(!get_harness_state()->net_fuzz_mode){
 #ifndef LEGACY_MODE
             //nyx_init_start();

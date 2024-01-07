@@ -19,7 +19,7 @@ def print_usage():
 def packet(data=""):
   global mode, python_3
   if mode == "stdout":
-    sys.stdout.write(data)
+    sys.stdout.buffer.write(data.encode("latin-1"))
   else:
     ready = select.select([s], [], [], 0)
     if ready[0]:
